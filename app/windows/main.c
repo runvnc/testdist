@@ -83,11 +83,54 @@ void comTest() {
   printf("COM port open result: %d\n");
 }
 
+ 
+char* lines[5000];
+
+int splitLines(char *str) {
+  int n = 0;
+  char* line = strtok(str, "\r\n");
+  while (line != NULL) {
+    lines[n++] = line;
+    line = strtok(NULL, "\r\n");
+  }
+  return n;
+} 
+
+FILE *datafile = NULL;
+struct nk_image graphimg;
+ 
 void checkCOM() {
-  char msg[1024];
-  int bytes = comRead(com, msg, 1024); 
+  char msg[999024];
+  int bytes = comRead(com, msg, 999024); 
   if (bytes > 0) {
-    printf("Serial data: %s", msg);
+    int numLines = splitLines(msg);
+    for (int i = 0; i < numLines; i++) {
+      char* line = lines[i];
+			printf("Serial data: %s", line);
+			char* str = strtok(line, " \r\n");
+			printf("Command is xx%sxx\n", str);
+      if (strcmp(str, "UPLOAD")==0) {
+        datafile = fopen("test.dat", "w");
+        remove("img1.png");
+      } else if (strcmp(str, "DATA")==0) {
+				str = strtok(NULL, " \r\n");
+				float x = atof(str);
+				str = strtok(NULL, " \r\n");
+				float y = atof(str);
+				printf("(%f, %f)\n", x, y);
+        fprintf(datafile,"%f %f\n",x,y);
+			} else if (strcmp(str,"END")==0) {
+				printf("Now we plot the chart.\n");
+        fclose(datafile);
+        nk_gdip_image_free(graphimg);
+        int ok = remove("img1.png");
+        if (ok == 0) printf("Delete OK\n"); else printf("Delete failed.\n");
+        
+        system("DEL img1.png");
+        system("gnuplot\\gnuplot.exe showresults.gpi");
+        graphimg = nk_gdip_load_image_from_file(L"img1.png");    
+			}
+		}
   }
 }
 
@@ -104,8 +147,7 @@ int main(void)
 
     comTest();
 
-    struct nk_image graphimg;
-    graphimg = nk_gdip_load_image_from_file(L"img1.png");
+   graphimg = nk_gdip_load_image_from_file(L"img1.png");
 
     while (running)
     {
@@ -132,12 +174,17 @@ int main(void)
             enum {EASY, HARD};
             static int op = EASY;
             static int property = 20;
-            nk_layout_row_static(ctx, 100, 100, 1);
-            nk_layout_row_static(ctx, 30, 80, 1);
+            nk_layout_row_static(ctx, 500, 500, 1);
+            nk_layout_row_static(ctx, 30, 80, 2);
             if (nk_button_label(ctx, "START")) {
-              fprintf(stdout, "button pressed\n");
+              fprintf(stdout, "start pressed\n");
 	      writeCOM("START\n");
 	    }
+            if (nk_button_label(ctx, "STOP")) {
+              fprintf(stdout, "stop pressed\n");
+	      writeCOM("STOP\n");
+	    }
+ 
             nk_layout_row_dynamic(ctx, 30, 2);
             if (nk_option_label(ctx, "easy", op == EASY)) op = EASY;
             if (nk_option_label(ctx, "hard", op == HARD)) op = HARD;
@@ -146,8 +193,8 @@ int main(void)
             nk_property_int(ctx, "Compression:", 0, &property, 100, 10, 1);
 
        	    struct nk_rect bounds = nk_window_get_bounds(ctx);
-	    bounds.w = 100;
-	    bounds.h = 100;
+	    bounds.w = 500;
+	    bounds.h = 500;
              
             nk_draw_image(nk_window_get_canvas(ctx), bounds, &graphimg, nk_white);
 	}
