@@ -20,11 +20,6 @@
 #include "../../nuklear.h"
 #include "nuklear_gdip.h"
 
-/* ===============================================================
- *
- *                          DEMO
- *
- * ===============================================================*/
 static LRESULT CALLBACK
 WindowProc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
@@ -72,16 +67,39 @@ void setupWin32() {
     nk_gdip_set_font(font);
 }
 
+int com = 0;
+
 void comTest() {
   int numPorts = comEnumerate();
-  for (int i = 0; i++; i<numPorts) {
+  numPorts = comGetNoPorts();
+  printf("Found %d COM ports.\n", numPorts);
+  for (int i = 0; i<numPorts; i++) {
+    printf("Checking port %d\n", i);
     const char * name = comGetPortName(i);
+    printf("Found COM port: %s\n", name);
   } 
+  printf("COM check done.\n");
+  int ok = comOpen(com, 115200);
+  printf("COM port open result: %d\n");
+}
+
+void checkCOM() {
+  char msg[1024];
+  int bytes = comRead(com, msg, 1024); 
+  if (bytes > 0) {
+    printf("Serial data: %s", msg);
+  }
 }
 
 
+void writeCOM(const char* msg) {
+  comWrite(com, msg, strlen(msg));
+}
+
 int main(void)
 {
+    setvbuf(stdout, (char*)NULL, _IONBF, 0);
+
     setupWin32();
 
     comTest();
@@ -91,20 +109,14 @@ int main(void)
 
     while (running)
     {
+	checkCOM();
+    
         /* Input */
         MSG msg;
         nk_input_begin(ctx);
-        if (needs_refresh == 0) {
-            if (GetMessageW(&msg, NULL, 0, 0) <= 0)
-                running = 0;
-            else {
-                TranslateMessage(&msg);
-                DispatchMessageW(&msg);
-            }
-            needs_refresh = 1;
-        } else needs_refresh = 0;
-        while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE)) {
-            if (msg.message == WM_QUIT)
+
+	while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE)) {
+    	  if (msg.message == WM_QUIT)
                 running = 0;
             TranslateMessage(&msg);
             DispatchMessageW(&msg);
@@ -122,8 +134,10 @@ int main(void)
             static int property = 20;
             nk_layout_row_static(ctx, 100, 100, 1);
             nk_layout_row_static(ctx, 30, 80, 1);
-            if (nk_button_label(ctx, "button"))
-                fprintf(stdout, "button pressed\n");
+            if (nk_button_label(ctx, "START")) {
+              fprintf(stdout, "button pressed\n");
+	      writeCOM("START\n");
+	    }
             nk_layout_row_dynamic(ctx, 30, 2);
             if (nk_option_label(ctx, "easy", op == EASY)) op = EASY;
             if (nk_option_label(ctx, "hard", op == HARD)) op = HARD;
@@ -143,7 +157,8 @@ int main(void)
 
         /* Draw */	
         nk_gdip_render(NK_ANTI_ALIASING_ON, nk_rgb(30,30,30));
-    }
+	
+     }
 
     nk_gdipfont_del(font);
     nk_gdip_shutdown();

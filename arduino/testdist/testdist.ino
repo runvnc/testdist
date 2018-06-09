@@ -74,12 +74,19 @@ void upload() {
   SerialUSB.println("END");
 }
 
+void idle() {
+  SerialUSB.println("IDLE");
+  delay(500);
+}
+
 void loop() {
   checkCommand();
   if (mode == "RUN") {
     run_();    
   } else if (mode == "UPLOAD") {
     upload();
+  } else {
+    idle();
   }
 }
  
