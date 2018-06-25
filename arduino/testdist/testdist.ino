@@ -80,7 +80,6 @@ void setup() {
 }
 
 float lastAngle = -1000;
-bool indexFired = false;
 
 int numCylinders = 0;
 
@@ -98,15 +97,14 @@ void countCylindersState(Event event) {
       }
       break;
     case IGNITION_PULSE:
-      if (cylinderIndex)
-        numCylinders++;
+      if (cylinderIndex) numCylinders++;
       break;
   }
 }
 
 bool zeroIndex = false;
 bool zeroIgnition = false;
-int encoderIncrements = 0;
+int zeroEncoderEdges = 0;
 
 void getZeroAngleState(Event event) {
   switch event {
@@ -122,29 +120,72 @@ void getZeroAngleState(Event event) {
   }
 }
 
+
+bool runIndex = false;
+int runEncoderEdges = 0;
+int encoderEdges = 0;
+
+void runState(Event event) {
+  switch (event) {
+    case INDEX_PULSE:
+      if (!runIndex) runIndex = true;
+      else {
+        runEncoderEdges = 0;
+        runIndex = false;
+      }
+      break;
+    case ENCODER_PULSE:
+      if (runIndex) runEncoderEdges++;
+      break;
+    case IGNITION_PULSE:
+      if (runIndex) {
+        runIndex = false;
+        float angle = calculateAngle(runEncoderEdges);
+        advanceAngle = angle - zeroAngle;
+      }
+      break;
+    case LOOP:
+      updateRPM();
+      break;
+  }
+}
+
+void allStates(Event event) {
+  switch (event) {
+    case ENCODER_PULSE:
+      // This gets reset in updateRPM in motor.ino
+      // after the RPM is calculated
+      encoderEdges++;
+      break;
+  }
+}
+
 void runAutoState(Event event) {
   
 }
 
 void runManualState(Event event) {
-  
+  switch (event) {
+    case 
+  }
 }
 
 void uploadState(Event event) {
   
 }
 
-void idleState() {
-  SerialUSB.println("IDLE");
-  delay(500);
+void idleState(Event event) {
+
 }
 
 void setState(String newState) {
-  
+  state = newState();
+  // log state to SerialUSB maybe
 }
 
 void handleEvent(Event event) {
   eventHandler[state](event);
+  allStates(event);
 }
 
 void initEventHandlers() {
@@ -153,6 +194,6 @@ void initEventHandlers() {
 
 void loop() {
   checkCommand();
-  eventHandler[state](LOOP);
+  handleEvent(LOOP);
 }
  

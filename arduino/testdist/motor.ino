@@ -1,3 +1,5 @@
+int RPM_UPDATE_INTERVAL_MS = 10;
+
 void adjustMotor(int error, int msSinceLast) {
   // just increment or decrement duty cycle for now
   // probably will be adequate to start testing prototype
@@ -16,5 +18,27 @@ void adjustMotor(int error, int msSinceLast) {
   // at 500 or 1000 Hz
   // 255 is 100%
   // analogWrite(motorDutyPin, motorDutyByte);
+}
+
+void checkError() {
+  rpmError = rpm - targetRPM;  
+}
+
+void updateRPM() {
+  int nowMS = millis();
+  if (lastRPMUpdate == NULL) {
+    lastRPMUpdate = nowMS;
+    return;
+  }
+  int elapsedMS = nowMS - lastRPMUpdate;
+  if (elapsed < RPM_UPDATE_INTERVAL_MS) return;
+
+  float rotations = encoderEdges/(float)EDGES_PER_REVOLUTION;
+  float rotPerMS = rotations/elapsedMS;
+  float rotPerSecond = rotPerMS / 1000;
+  rpm = rotPerSecond / 60.0;
+  encoderEdges = 0;
+  checkError();
+  lastRPMUpdate = nowMS;
 }
 
