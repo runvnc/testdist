@@ -1,30 +1,47 @@
-void simulatorStepRun() {
-  int elapsedRPM, elapsedMS, elapsedmicros;
+enum Led { DIPLAY_RPM, DISPLAY_ANGLE };
 
-  initOrUpdate(&lastRPMUpdate, &elapsedRPM, ms);
-  initOrUpdate(&startMS, &elapsedMS, ms);
-  initOrUpdate(&startmicros, &elapsedmicros, micros_);
+int MAX_RPM = 10000;
+int currentSimRPM = 0;
 
-  fakeIncrementInterruptIfTime();
-  fakeIndexPulseInterruptIfTime();
-  fakeDistributorInterruptIfTime();
-    
-  fakeIncrementInterruptIfTime();
-  fakeIndexPulseInterruptIfTime();
-  fakeDistributorInterruptIfTime();
+// assume it takes simulated motor 1 second to go from 0
+// RPM to 3000 etc.
+float RPM_CHANGE_PER_SECOND = 3000;
+
+byte simulatedMotorDuty = 0;
+float simulatedRPM = 0;
+
+void setSimulatedMotorDuty(double duty) {
+  simulatedMotorDuty = (byte)duty; 
+}
+
+float displayAngle = 0;
+float displayRPM = 0;
+
+void setSimulatedLED(Led which, float value) {
+  switch (which) {
+    case DISPLAY_RPM:
+      displayRPM = value;
+      break;
+    case DISPLAY_ANGLE:
+      displayAngle = value;
+      break;
+  }
+  SerialUSB.println("RPM: " + String(displayRPM) + 
+                    "Angle: " + String(displayAngle));
+}
+
+void updateSimulatedRPM() {
   
-  if (elapsedmicros > 600) {
-    incrementAngleEdge(); // FAKE INTERRUPT FIRE
-  }
-  if (!indexFired && elapsedMS > 200/fakeSpeed) {
-    zeroAnglePulse(); // FAKE INTERRUPT FIRE
-    indexFired = true;
-  }
-  if (elapsedMS > 275/fakeSpeed) {
-    distributorFired(); // FAKE INTERRUPT
-    startMS = ms;
-    indexFired = false;
-    sendStatus();
-  }
+}
+
+void encoderInterruptIfTime() {
+  
+}
+
+void simulatorStepRun() {
+  updateSimulatedRPM();
+  encoderInterruptIfTime();
+  indexPulseInterruptIfTime();
+  distributorInterruptIfTime();
 }
 

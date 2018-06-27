@@ -1,76 +1,22 @@
 enum State { IDLE, COUNT_CYLINDERS, GET_ZERO_ANGLE, RUN_AUTO, RUN_MANUAL, UPLOAD };
-enum Event { START, LOOP, ENCODER_PULSE, INDEX_PULSE, IGNITION_PULSE, SWITCH_SETUP, SWITCH_RUN, SWITCH_MANUAL };
+enum Event { START, LOOP, ENCODER_PULSE, INDEX_PULSE, IGNITION_PULSE, 
+             SWITCH_SETUP, SWITCH_RUN, SWITCH_MANUAL };
 
-int EDGES_PER_REVOLUTION = 2048;
-String state = "IDLE";
-
-volatile float angleDegrees = 0;
-volatile float initialAngle = 0;
-volatile float advanceAngle = 0;
-volatile int rotations = 0;
-volatile int startMS = NULL;
-volatile int startmicros = NULL;
-volatile int lastIndexMS = NULL;
-volatile int rotateMS = 0;
-volatile int rpm = 0;
-volatile int angleIncrements = 0;
-int targetRPM = 100;
-int rpmUpdateIntervalMS = 50;
-int lastRPMUpdate = NULL;
-float fakeSpeed = 1.0;
-
-int p = 0; // index into data[]
+State state = IDLE;
 
 // interrupt (encoder index)
-void zeroAnglePulse() {
-  handleEvent(INDEX_PULSE);
-  
-  //angleIncrements = 0;
-  //rotations++;
-}
+void zeroAnglePulse() { handleEvent(INDEX_PULSE); }
 
 // interrupt (encoder A or B wave edge)
-void incrementAngleEdge() {
-  handleEvent(ENCODER_PULSE);
-  //angleIncrements++;
-}
-
-void calculateAngle() {
-  angleDegrees = (angleIncrements / EDGES_PER_REVOLUTION) * 360;
-  if (state == "SETUP")
-    initialAngle = angleDegrees;
-  else
-    advanceAngle = angleDegrees - initialAngle;
-}
+void incrementAngleEdge() { handleEvent(ENCODER_PULSE); }
 
 // interrupt
-void distributorFired() {
-  handleEvent(IGNITION_PULSE);
-  //calculateAngle();
-}
-
-int motorDutyByte = 0;
-int motorDutyPin = 8;
-
-void updateRPM() {
-  int elapsedMS = 0;
-  if (lastRPMUpdate != -100) {
-    elapsedMS = millis()-lastRPMUpdate;
-    lastRPMUpdate = millis();
-  }
-  float rotations_ = (float)rotations + (angleDegrees/360.0);
-  float rotationsPerSecond = rotations / ((float)rotateMS/1000.0);
-  //SerialUSB.println("rotateS: " + String((float)rotateMS/1000.0) + " rotations: " + String(rotations));
-  rpm = rotationsPerSecond * 60;
-  int error = rpm - targetRPM;
-  if (abs(error)>20) adjustMotor(error, elapsedMS);
-  rotations = 0;
-  lastRPMUpdate = millis();
-}
+void distributorFired() { handleEvent(IGNITION_PULSE); }
 
 void setup() { 
   initializeHW();
   initializeComm();
+  initializeMotor();
   
   randomSeed(analogRead(0));
 
@@ -79,10 +25,7 @@ void setup() {
   setState(IDLE);
 }
 
-float lastAngle = -1000;
-
 int numCylinders = 0;
-
 bool cylinderIndex = false;
 
 void countCylindersState(Event event) {
@@ -93,6 +36,7 @@ void countCylindersState(Event event) {
         cylinderIndex = true;
       } else {
         cylinderIndex = false;
+        reportCylinderCount(numCylinders);
         setState(GET_ZERO_ANGLE);
       }
       break;
@@ -104,22 +48,42 @@ void countCylindersState(Event event) {
 
 bool zeroIndex = false;
 bool zeroIgnition = false;
+float zeroAngle = 0;
 int zeroEncoderEdges = 0;
 
 void getZeroAngleState(Event event) {
   switch event {
     case INDEX_PULSE:
+      if (!zeroIndex)
+        zeroIndex = true;
+      else
+        zeroIndex = false;
       break;
     case ENCODER_PULSE:
-
+      zeroEncoderEdges++;
       break;
-
     case IGNITION_PULSE:
-   
+      zeroAngle = calculateAngle(zeroEncoderEdgges);
       break;
   }
 }
 
+int lastRecordedRPM = NULL;
+float lastRecordedAngle = NULL;
+
+void checkNewData() {
+  if (lastRecordedRPM != rpm ||
+      lastRecordedAngle != advanceAngle) {
+    addDataPoint(rpm,advanceAngle);
+    lastRecordedRPM = rpm;
+    lastRecordedAngle = advanceAngle;
+  }
+}
+
+float calculateAngle(int encoderEdges) {
+  angleDegrees = (encoderEdges / EDGES_PER_REVOLUTION) * 360;
+  return angleDegrees;
+}
 
 bool runIndex = false;
 int runEncoderEdges = 0;
@@ -146,6 +110,7 @@ void runState(Event event) {
       break;
     case LOOP:
       updateRPM();
+      checkNewData();
       break;
   }
 }
@@ -161,21 +126,25 @@ void allStates(Event event) {
 }
 
 void runAutoState(Event event) {
-  
-}
+  runState(event);
+} 
 
 void runManualState(Event event) {
-  switch (event) {
-    case 
-  }
+  runState(event);
 }
 
 void uploadState(Event event) {
-  
-}
+  upload();
+  setState(IDLE);
+} 
 
 void idleState(Event event) {
-
+  switch (event) {
+    case LOOP:
+     displayRPM(0);
+     displayAngle(0);
+     break;
+  }
 }
 
 void setState(String newState) {
@@ -189,7 +158,12 @@ void handleEvent(Event event) {
 }
 
 void initEventHandlers() {
-  
+  eventHandler[IDLE] = idleState;
+  eventHandler[COUNT_CYLINDERS] = countCylindersState;
+  eventHandler[GET_ZERO_ANGLE] = getZeroAngleState;
+  eventHandler[RUN_AUTO] = runAutoState;
+  eventHandler[RUN_MANUAL] = runManualState;
+  eventHandler[UPLOAD] = uploadState;
 }
 
 void loop() {

@@ -27,24 +27,20 @@ void clearData() {
   }
 }
 
+void addDataPoint(int rpm, float angle) {
+  data[p][0] = rpm;
+  data[p][1] = angle;
+}
+
 void checkCommand() {
   String cmd = readLine();
-  if (cmd[0] != 0) {
-    if (cmd == "START") {
-      setState("RUN");
-      clearData();
-      mode = "RUN";
-    } else if (cmd == "STOP") {
-      mode = "UPLOAD";
-    }
-  }
+  // maybe control simulator with buttons on UI
 }
 
 void upload() {
   int max_ = p;
   p = 0;
   SerialUSB.println("UPLOAD");
-  mode = "IDLE";
   for (int i=0; i<max_; i++) {
     SerialUSB.println("DATA " + String(data[i][0])+" "+String(data[i][1]));
   }
@@ -53,5 +49,13 @@ void upload() {
 
 void sendStatus() {
   SerialUSB.println("STATUS  RPM: " + String(rpm) + "  degrees: " + String(angleDegrees));  
+}
+
+void sendLine(String s) {
+  SerialUSB.println(s);
+}
+
+void reportCylinderCount(int cylinders) {
+  sendLine("CYLINDERS: " + String(cylinders));
 }
 

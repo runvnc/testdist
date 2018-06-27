@@ -1,27 +1,18 @@
+// http://playground.arduino.cc/Code/PIDLibrary MIT license
+#include <PID_v1.h>
+
+int EDGES_PER_REVOLUTION = 2048;
 int RPM_UPDATE_INTERVAL_MS = 10;
+double targetRPM = 0;
+double rpm = 0;
+double motorDuty = 0;
 
-void adjustMotor(int error, int msSinceLast) {
-  // just increment or decrement duty cycle for now
-  // probably will be adequate to start testing prototype
-  // need more motivation to dig into PID
-  // will be motivated if can't get anywhere with simple control
-  // or move on from prototype
-  // or done testing other things on prototype
-  if (error > 0) 
-    motorDutyByte--;
-  else
-    motorDutyByte++;
-  motorDutyByte = min(motorDutyByte, 255);
-  motorDutyByte = max(0, motorDutyByte);
-  // nothing connected yet so commenting out
-  // Arduino handles PWM with a timer interrupt
-  // at 500 or 1000 Hz
-  // 255 is 100%
-  // analogWrite(motorDutyPin, motorDutyByte);
-}
+PID motorPID(&rpm, &motorDuty, &targetRPM, 2, 5, 1, DIRECT);
 
-void checkError() {
-  rpmError = rpm - targetRPM;  
+void adjustMotor() {
+  motorPID.Compute();
+  analogWrite(motorDutyPin, motorDuty);
+  setSimulatedMotorDuty(motorDuty);
 }
 
 void updateRPM() {
@@ -38,7 +29,13 @@ void updateRPM() {
   float rotPerSecond = rotPerMS / 1000;
   rpm = rotPerSecond / 60.0;
   encoderEdges = 0;
-  checkError();
+  adjustMotor();
   lastRPMUpdate = nowMS;
+}
+
+
+
+void initializeMotor() {
+  motorPID.SetMode(AUTOMATIC);
 }
 
