@@ -18,14 +18,14 @@ float simDisplayRPM = 0;
 int setSimulatedLED(Led which, float value) {
   switch (which) {
     case DISPLAY_RPM:
-      displayRPM = value;
+      simDisplayRPM = value;
       break;
     case DISPLAY_ANGLE:
-      displayAngle = value;
+      simDisplayAngle = value;
       break;
   }
-  SerialUSB.println("RPM: " + String(displayRPM) + 
-                    "Angle: " + String(displayAngle));
+  SerialUSB.println("RPM: " + String(simDisplayRPM) + 
+                    "Angle: " + String(simDisplayAngle));
 }
 
 void updateSimulatedRPM() {
