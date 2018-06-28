@@ -9,7 +9,7 @@ void blink(int d) {
   delay(d);
 }
 
-DISPLAY_UPDATE_MS = 50;
+int DISPLAY_UPDATE_MS = 50;
 int lastAngleUpdate = NULL;
 
 void displayAngle(float angle) {
@@ -23,7 +23,7 @@ void displayAngle(float angle) {
 int lastRPMUpdate = NULL;
 
 void displayRPM(int rpm) {
-  if (lastRPMUpdatae == NULL ||
+  if (lastRPMUpdate == NULL ||
       millis() - lastRPMUpdate > DISPLAY_UPDATE_MS) {
     setSimulatedLED(DISPLAY_RPM, rpm);
     lastRPMUpdate = millis();      

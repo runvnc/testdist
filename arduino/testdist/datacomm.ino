@@ -1,5 +1,6 @@
 const int DATAPOINTS = 2000;
 float data[DATAPOINTS][2];
+int p = 0; // index into data
 
 char line[1024];
 

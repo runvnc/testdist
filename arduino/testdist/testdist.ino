@@ -1,8 +1,21 @@
 enum State { IDLE, COUNT_CYLINDERS, GET_ZERO_ANGLE, RUN_AUTO, RUN_MANUAL, UPLOAD };
 enum Event { START, LOOP, ENCODER_PULSE, INDEX_PULSE, IGNITION_PULSE, 
              SWITCH_SETUP, SWITCH_RUN, SWITCH_MANUAL };
+enum Led { DISPLAY_RPM, DISPLAY_ANGLE };           
+
+// Using interrupts to make it more practical to ensure that 
+// pulses are detected while at the same time ensuring system
+// stays responsive.
 
 State state = IDLE;
+
+int EDGES_PER_REVOLUTION = 2048;
+int RPM_UPDATE_INTERVAL_MS = 10;
+double targetRPM = 0;
+double rpm = 0;
+double motorDuty = 0;
+
+float advanceAngle = 0, angleDegrees = 0;
 
 // interrupt (encoder index)
 void zeroAnglePulse() { handleEvent(INDEX_PULSE); }
@@ -24,6 +37,9 @@ void setup() {
 
   setState(IDLE);
 }
+
+// So with the event-based design, the state handlers 
+// are the most straightforward approach.
 
 int numCylinders = 0;
 bool cylinderIndex = false;
@@ -52,7 +68,7 @@ float zeroAngle = 0;
 int zeroEncoderEdges = 0;
 
 void getZeroAngleState(Event event) {
-  switch event {
+  switch (event) {
     case INDEX_PULSE:
       if (!zeroIndex)
         zeroIndex = true;
@@ -63,7 +79,7 @@ void getZeroAngleState(Event event) {
       zeroEncoderEdges++;
       break;
     case IGNITION_PULSE:
-      zeroAngle = calculateAngle(zeroEncoderEdgges);
+      zeroAngle = calculateAngle(zeroEncoderEdges);
       break;
   }
 }
@@ -72,6 +88,9 @@ int lastRecordedRPM = NULL;
 float lastRecordedAngle = NULL;
 
 void checkNewData() {
+  // TODO: check that data changed by a certain
+  // amount and some time has elapsed before
+  // adding a data point
   if (lastRecordedRPM != rpm ||
       lastRecordedAngle != advanceAngle) {
     addDataPoint(rpm,advanceAngle);
@@ -147,10 +166,12 @@ void idleState(Event event) {
   }
 }
 
-void setState(String newState) {
-  state = newState();
+void setState(State newState) {
+  state = newState;
   // log state to SerialUSB maybe
 }
+
+void (*eventHandler[5])(Event);
 
 void handleEvent(Event event) {
   eventHandler[state](event);

@@ -1,11 +1,9 @@
 // http://playground.arduino.cc/Code/PIDLibrary MIT license
 #include <PID_v1.h>
 
-int EDGES_PER_REVOLUTION = 2048;
-int RPM_UPDATE_INTERVAL_MS = 10;
-double targetRPM = 0;
-double rpm = 0;
-double motorDuty = 0;
+// There is also a PID autotune library I might use
+
+int motorDutyPin = 0; // ??
 
 PID motorPID(&rpm, &motorDuty, &targetRPM, 2, 5, 1, DIRECT);
 
@@ -22,7 +20,7 @@ void updateRPM() {
     return;
   }
   int elapsedMS = nowMS - lastRPMUpdate;
-  if (elapsed < RPM_UPDATE_INTERVAL_MS) return;
+  if (elapsedMS < RPM_UPDATE_INTERVAL_MS) return;
 
   float rotations = encoderEdges/(float)EDGES_PER_REVOLUTION;
   float rotPerMS = rotations/elapsedMS;
@@ -32,8 +30,6 @@ void updateRPM() {
   adjustMotor();
   lastRPMUpdate = nowMS;
 }
-
-
 
 void initializeMotor() {
   motorPID.SetMode(AUTOMATIC);
