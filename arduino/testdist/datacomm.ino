@@ -9,6 +9,7 @@ void initializeComm() {
   while (!Serial1) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
+  SerialUSB.println("HELLO");
 }
 
 String readLine() {
@@ -35,6 +36,10 @@ void addDataPoint(int rpm, float angle) {
 
 void checkCommand() {
   String cmd = readLine();
+  if (cmd == "PING") sendLine("PONG");
+  else if (cmd == "SETUPON") {
+    setupSwitchOn();
+  }
   // maybe control simulator with buttons on UI
 }
 

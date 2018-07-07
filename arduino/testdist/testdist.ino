@@ -1,6 +1,7 @@
 enum State { IDLE, COUNT_CYLINDERS, GET_ZERO_ANGLE, RUN_AUTO, RUN_MANUAL, UPLOAD };
 enum Event { START, LOOP, ENCODER_PULSE, INDEX_PULSE, IGNITION_PULSE, 
-             SWITCH_SETUP, SWITCH_RUN, SWITCH_MANUAL };
+             SWITCH_SETUP_ON, SWITCH_SETUP_OFF, SWITCH_RUN_ON, SWITCH_RUN_OFF, 
+             SWITCH_MANUAL_ON, SWITCH_MANUAL_OFF };
 enum Led { DISPLAY_RPM, DISPLAY_ANGLE };           
 
 // Using interrupts to make it more practical to ensure that 
@@ -26,6 +27,12 @@ void incrementAngleEdge() { handleEvent(ENCODER_PULSE); }
 // interrupt
 void distributorFired() { handleEvent(IGNITION_PULSE); }
 
+// interrupt
+void setupSwitchOn() { handleEvent(SWITCH_SETUP_ON); }
+
+// interrupt
+void runSwitchOn() { handleEvent(SWITCH_RUN_ON); }
+
 void setup() { 
   initializeHW();
   initializeComm();
@@ -35,6 +42,7 @@ void setup() {
 
   blink(250);
 
+  initEventHandlers();
   setState(IDLE);
 }
 
@@ -160,9 +168,13 @@ void uploadState(Event event) {
 void idleState(Event event) {
   switch (event) {
     case LOOP:
-     displayRPM(0);
-     displayAngle(0);
-     break;
+      displayRPM(0);
+      displayAngle(0);
+      break;
+    case SWITCH_SETUP_ON:
+      sendLine("COUNT_CYLINDERS state activated.");
+      setState(COUNT_CYLINDERS);
+      break;
   }
 }
 

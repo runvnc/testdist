@@ -9,7 +9,7 @@ void blink(int d) {
   delay(d);
 }
 
-int DISPLAY_UPDATE_MS = 50;
+int DISPLAY_UPDATE_MS = 500;
 int lastAngleUpdate = NULL;
 
 void displayAngle(float angle) {
